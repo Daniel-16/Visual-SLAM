@@ -18,6 +18,7 @@ class VisualSLAM:
         self.camera_pose = []
         self.trajectory = []
         self.min_matches = 50
+        self.prev_frame_color = None
         
     def process_frame(self, frame):
         keypoints, descriptors = self.feature_extractor.detect_and_compute(frame)
@@ -25,6 +26,7 @@ class VisualSLAM:
         if self.feature_extractor.prev_descriptors is None:
             self.feature_extractor.prev_keypoints = keypoints
             self.feature_extractor.prev_descriptors = descriptors
+            self.prev_frame_color = frame.copy()
             return frame
         
         matches = self.feature_extractor.match_features(descriptors)
@@ -32,6 +34,7 @@ class VisualSLAM:
         if not matches or len(matches) < self.min_matches:
             self.feature_extractor.prev_keypoints = keypoints
             self.feature_extractor.prev_descriptors = descriptors
+            self.prev_frame_color = frame.copy()
             return frame
         
         prev_points, curr_points = self.feature_extractor.extract_matched_points(matches, keypoints)
@@ -49,10 +52,23 @@ class VisualSLAM:
             new_points = self.mapper.triangulate_points(prev_points, curr_points, R, t)
             self.mapper.add_points_to_map(new_points, pose)
             
+        old_keypoints = self.feature_extractor.prev_keypoints
+        old_frame = self.prev_frame_color if self.prev_frame_color is not None else frame
+
+        output = cv2.drawMatches(
+            old_frame,
+            old_keypoints,
+            frame,
+            keypoints,
+            matches[:50],
+            None,
+            flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS,
+        )
+
         self.feature_extractor.prev_keypoints = keypoints
         self.feature_extractor.prev_descriptors = descriptors
-        
-        return cv2.drawMatches(self.feature_extractor.prev_keypoints, self.feature_extractor.prev_descriptors, frame, keypoints, matches[:50], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        self.prev_frame_color = frame.copy()
+        return output
     
     def run(self):
         print("Visual SLAM started. Move the camera to build a map.")
@@ -65,7 +81,6 @@ class VisualSLAM:
                 if frame is None:
                     break
                 
-                self.feature_extractor.prev_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 processed_frame = self.process_frame(frame)
                 
                 if len(self.camera_pose) % 5 == 0:

@@ -1,32 +1,18 @@
 # Visual SLAM
 
-A minimal Visual SLAM (Simultaneous Localization and Mapping) playground using OpenCV, NumPy, and Matplotlib. The repository provides building blocks for a monocular SLAM pipeline: camera capture, feature extraction and matching, relative pose estimation, point triangulation, and simple live visualization.
+A complete Visual SLAM (Simultaneous Localization and Mapping) implementation using OpenCV, NumPy, and Matplotlib. This repository provides a working monocular SLAM pipeline with camera capture, feature extraction and matching, relative pose estimation, point triangulation, and both live and offline visualization.
 
 ## Features
 
-- **Camera capture**: simple wrapper over OpenCV `VideoCapture` (`camera.py`).
-- **Features**: ORB keypoints, Hamming BFMatcher, and helpers to extract matched tracks (`features.py`).
-- **Pose estimation**: Essential matrix (RANSAC) + pose recovery (`pose_estimation.py`).
-- **Mapping**: linear triangulation and basic world-point accumulation (`mapping.py`).
-- **Visualization**: live 2D trajectory and 3D map point scatter (`visualization.py`).
-<!-- 
-## Project structure
+- **Complete SLAM Pipeline**: Full implementation in `visual_slam.py` with proper state management
+- **Camera capture**: Simple wrapper over OpenCV `VideoCapture` (`camera.py`)
+- **Features**: ORB keypoints, Hamming BFMatcher, and helpers to extract matched tracks (`features.py`)
+- **Pose estimation**: Essential matrix (RANSAC) + pose recovery (`pose_estimation.py`)
+- **Mapping**: Linear triangulation and world-point accumulation (`mapping.py`)
+- **Live Visualization**: Real-time 2D trajectory and 3D map point display (`visualization.py`)
+- **Offline Visualization**: Standalone 3D map viewer for saved data (`view_map.py`)
+- **Data Persistence**: Save/load camera trajectories and map points as NumPy arrays
 
-```
-slam-project/
-  ├─ camera.py            # Camera wrapper
-  ├─ features.py          # ORB features + BFMatcher utilities
-  ├─ pose_estimation.py   # Essential matrix + recoverPose
-  ├─ mapping.py           # Triangulation + naive map
-  ├─ visualization.py     # Matplotlib live views
-  ├─ main.py              # Placeholder entrypoint
-  ├─ visual_slam.py       # (reserved for future pipeline orchestration)
-  ├─ pyproject.toml       # Project metadata and dependencies
-  ├─ uv.lock              # Lockfile (if using `uv`)
-  ├─ LICENSE              # MIT
-  └─ README.md            # This file 
-```
--->
 
 ## Requirements
 
@@ -38,6 +24,7 @@ Core dependencies (managed in `pyproject.toml`):
 - `opencv-python>=4.8.0`
 - `numpy>=1.24.0`
 - `matplotlib>=3.7.0`
+- `PyQt5>=5.15.0` (for interactive matplotlib backends)
 
 Dev (optional): `pytest`, `black`, `flake8`.
 
@@ -64,31 +51,114 @@ source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -e .
 ```
 
-Notes:
+## Usage
 
-- For best results, use a calibrated camera and set `fx, fy, cx, cy` accordingly.
-- This is a minimal, educational pipeline; it lacks many production SLAM features (robust initialization, scale estimation, loop closure, keyframe management, bundle adjustment, etc.).
+### Running the SLAM System
 
-## Module overview
+```bash
+# Run the complete SLAM pipeline
+uv run main.py
 
-- `camera.Camera`: opens a webcam, provides `get_frame()` and `release()`.
-- `features.FeatureExtractor`:
-  - `detect_and_compute(frame)`: ORB keypoints/descriptors.
-  - `match_features(descriptors)`: BFMatcher cross-checked matches to previous frame.
-  - `extract_matched_points(matches, keypoints)`: returns aligned `prev_points, curr_points`.
-- `pose_estimation.PoseEstimator`:
-  - `estimate_pose(prev_points, curr_points)`: Essential matrix (RANSAC) and `recoverPose` → `(R, t)`.
-- `mapping.Mapper`:
-  - `triangulate_points(prev_points, curr_points, R, t)`: linear triangulation.
-  - `add_points_to_map(new_points, pose)`: transform to world and accumulate.
-- `visualization.Visualizer`:
-  - `setup_plots()`, `update(frame, keypoints, trajectory, map_points, poses)`, `close()`.
+# Or directly:
+uv run visual_slam.py
+```
+
+**Controls during SLAM:**
+
+- Press `'q'` to quit
+- Press `'s'` to save current trajectory and map points to `.npy` files
+- Press `'r'` to reset the system
+
+### Viewing Saved Data
+
+```bash
+# View saved trajectory and map points in 3D
+uv run view_map.py
+```
+
+This will load `camera_trajectory.npy` and `map_points.npy` (if they exist) and display them in an interactive 3D plot.
+
+### Data Files
+
+The system automatically saves data to:
+
+- `camera_trajectory.npy`: Camera poses as 4x4 transformation matrices
+- `map_points.npy`: 3D world points as Nx3 arrays
+
+## Module Overview
+
+### Core SLAM Components
+
+- **`visual_slam.VisualSLAM`**: Main SLAM pipeline orchestrator
+
+  - `run()`: Main execution loop with keyboard controls
+  - `process_frame(frame)`: Process individual camera frames
+  - Handles state management, feature tracking, and visualization
+
+- **`camera.Camera`**: Camera interface
+
+  - `get_frame()`: Capture frames from webcam
+  - `release()`: Clean up camera resources
+
+- **`features.FeatureExtractor`**: Feature detection and matching
+
+  - `detect_and_compute(frame)`: ORB keypoints/descriptors
+  - `match_features(descriptors)`: BFMatcher cross-checked matches
+  - `extract_matched_points(matches, keypoints)`: Returns aligned point pairs
+
+- **`pose_estimation.PoseEstimator`**: Camera pose estimation
+
+  - `estimate_pose(prev_points, curr_points)`: Essential matrix (RANSAC) + recoverPose → `(R, t)`
+
+- **`mapping.Mapper`**: 3D point mapping
+  - `triangulate_points(prev_points, curr_points, R, t)`: Linear triangulation
+  - `add_points_to_map(new_points, pose)`: Transform to world coordinates and accumulate
+
+### Visualization Components
+
+- **`visualization.Visualizer`**: Live visualization during SLAM
+
+  - `setup_plots()`: Initialize matplotlib plots
+  - `update(frame, keypoints, trajectory, map_points, poses)`: Update displays
+  - `close()`: Clean up visualization
+
+- **`view_map.py`**: Standalone 3D map viewer
+  - `visualize_from_files()`: Load and display saved trajectory and map data
+  - Supports both interactive display and file export
+  - Robust backend selection for different environments
+
+## Technical Notes
+
+- **Camera Calibration**: For best results, use a calibrated camera and update the camera matrix in `visual_slam.py`
+- **Scale**: This implementation lacks scale estimation; the map scale is arbitrary
+- **Robustness**: This is an educational implementation; production SLAM systems include additional features like:
+  - Robust initialization procedures
+  - Loop closure detection
+  - Bundle adjustment
+  - Keyframe management
+  - Scale estimation
+  - Dense mapping
 
 ## Development
 
 - Format: `black .`
 - Lint: `flake8`
 - Test: `pytest` (if/when tests are added)
+
+## Environment Setup
+
+For systems with display issues (common in headless environments or certain Linux distributions):
+
+1. Set environment variables in your `.env` file:
+
+   ```bash
+   export QT_QPA_PLATFORM=xcb
+   export DISPLAY=:0  # or your display number
+   ```
+
+2. The visualization system will automatically:
+   - Try Qt5Agg backend for interactive displays
+   - Fall back to saving plots as PNG files if no interactive backend is available
 
 ## License
 

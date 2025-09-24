@@ -1,7 +1,11 @@
 from cProfile import label
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import os
+if not os.environ.get('DISPLAY'):
+    matplotlib.use('Agg')
 
 class Visualizer:
     def __init__(self):
@@ -45,20 +49,22 @@ class Visualizer:
         
         if len(map_points) > 0:
             map_np = np.array(map_points)
-            if len(map_np > 1000):
+            if len(map_np) > 1000:
                 indices = np.random.choice(len(map_np), size=1000, replace=False)
                 map_np = map_np[indices]
-            self.ax3.scatter(map_np[:, 0], map_np[:, 1], map_np[:, 2], c='r', s=1)
+            self.ax3.scatter(map_np[:, 0], map_np[:, 1], map_np[:, 2], c='red', s=1, alpha=0.6)
             
         if len(trajectory) > 1:
             traj_np = np.array(trajectory)
             self.ax3.plot(traj_np[:, 0], traj_np[:, 1], traj_np[:, 2], 'b-', lw=2, label='Trajectory')
             
         self.ax3.set_title(f'3D Map Points - Total: {len(map_points)}')
-        plt.draw()
-        plt.pause(0.001)
+        if matplotlib.get_backend().lower() != 'agg':
+            plt.draw()
+            plt.pause(0.001)
         
     def close(self):
-        plt.ioff()
-        plt.show()
+        if matplotlib.get_backend().lower() != 'agg':
+            plt.ioff()
+            plt.show()
         

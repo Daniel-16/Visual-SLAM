@@ -11,6 +11,7 @@ dependencies = [
     "opencv-python>=4.8.0",
     "numpy>=1.24.0",
     "matplotlib>=3.7.0",
+    "PyQt5>=5.15.0",  # For Qt5Agg backend
 ]
 
 dev-dependencies = [
