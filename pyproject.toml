@@ -1,0 +1,20 @@
+[project]
+name = "slam-project"
+version = "0.1.0"
+description = "A Visual SLAM implementation"
+authors = [{name = "Daniel Toba", email = "danieloloruntoba681@gmail.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+]
+
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
